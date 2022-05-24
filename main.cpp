@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 #include "VAO.h"
 #include "VBO.h"
 #include "Texture.h"
+#include "Camera.h"
 
 /*
  * Based off of OpenGL Crash Course Tutorial on YouTube
@@ -53,7 +54,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create window (width, height, title, fullscreen, other)
-	GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "Texture Time", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(winWidth, winHeight, "3D", NULL, NULL);
 	if (window == NULL) {
 		// verify window opens correctly
 		std::cout << "failed to create glfw window" << std::endl;
@@ -89,23 +90,21 @@ int main() {
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-	// Gets ID of uniform called scale in default.vert
-	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
-
 	// Path for parent directory
 	std::string parentDir = fs::current_path().string();
 	// Path for texture files
 	std::string texPath = "/Resources/Textures/";
 
 	// Load in an image as a texture
-	Texture monkaS((parentDir + texPath + "monkaS.png").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+	Texture monkaS((parentDir + texPath + "blackBricks.png").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
 	monkaS.texUnit(shaderProgram, "tex0", 0);
-
-	float rotation = 0.0f;
-	double prevTime = glfwGetTime();
 
 	// Enable depth buffer
 	glEnable(GL_DEPTH_TEST);
+
+	// Create our Camera object
+	Camera camera(winWidth, winHeight, glm::vec3(0.0f, 0.0f, 2.0f));
+
 
 	// Main loop
 
@@ -116,33 +115,10 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Activate our shader program for OpenGl
 		shaderProgram.Activate();
+		
+		camera.Inputs(window);
+		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
 
-		// simple timer to rotate our model on every frame
-		double crntTime = glfwGetTime();
-		if (crntTime - prevTime >= 1 / 60) {
-			rotation += 1.5f;
-			prevTime = crntTime;
-		}
-
-		// Initialize matrices to the 4x4 indentity matrix
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-		// Assign transformations to each matrix
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
-		proj = glm::perspective(glm::radians(45.0f), (float)(winWidth / winHeight), 0.1f, 100.0f);
-
-		// Outputs our matrices into the Vertex Shader
-		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-
-		// Set uniID's value (always set values after the shader program is activated!!!)
-		glUniform1f(uniID, 0.5f);
 		// Bind texture
 		monkaS.Bind();
 		// Bind VAO so OpenGl uses it
